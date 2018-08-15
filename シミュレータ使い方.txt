@@ -1,0 +1,38 @@
+image関連を扱うためのパッケージをインストール
+apt-get install -y ros-kinetic-uvc-camera
+apt-get install -y ros-kinetic-image-*
+
+http://emanual.robotis.com/docs/en/platform/turtlebot3/pc_setup/#pc-setup
+http://emanual.robotis.com/docs/en/platform/turtlebot3/simulation/
+このページのROSのインストールおよび
+turtlebot3.git
+turtlebot3_msgs.git
+turtlebot3_simulations.git
+をクローンしていることが前提
+
+catkin_ws/src以下にこのファイル群を追加or同一のファイルがある場合は上書きコピー
+
+
+http://emanual.robotis.com/docs/en/platform/turtlebot3/pc_setup/#pc-setup
+このサイトを参考にgazebo9にアップデート
+
+turtlebot3_simulations/turtlebot3_gazebo/worlds/FPT.world
+の中にあるsouを入れるPCのubuntuの名前に変更（絶対パスじゃないとなんかうまくいかない）
+
+catkin_buildして
+roslaunch turtlebot3_gazebo user_map.launch
+roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch
+を別々の端末で起動
+
+rosrun image_view image_view image:=/camera/rgb/image_raw
+or
+roslaunch turtlebot3_gazebo turtlebot3_gazebo_rviz.launch
+
+/camera/rgb/image_rawにパブリッシュされてる画像を弄ることができる
+例：rosrun cv_bridge_tutorial cv_bridge_tutorial
+いろいろ弄っててあんまきれいなコードではないから流し読む程度で
+
+
+gazebo9バグ
+シミュレータをきれいに終了することができないらしく、シミュレータをすぐ再起動しようとするとエラーが出る
+1分くらい待てば復活する

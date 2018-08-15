@@ -1,0 +1,50 @@
+gazebo x ROSでシミュレーション
+
+mapを作る
+テクスチャを付けた床を作成
+https://qiita.com/RyodoTanaka/items/b1ebd48da81669db7409
+
+model editorだとテクスチャ読み込まないので、メッシュを直接ロードする。
+http://gazebosim.org/tutorials?tut=import_mesh
+
+meshが相対パスだとうまくいかないので、worldのmeshを相対パスにする(file:///home/~)
+
+scaleの調整は.worldの
+<mesh>
+<uri></uri>
+<scale></scale> ココ
+</mesh>
+
+cameraがついてないので、turtlebot3/turtlebot3_description/urdf/turtlbot3_burger.gazebo.xacro
+を編集
+https://answers.ros.org/question/290616/how-to-change-pitch-of-camera-in-gazebo/
+
+image関連を扱うためのパッケージ
+#apt-get install -y ros-kinetic-uvc-camera
+#apt-get install -y ros-kinetic-image-*
+
+turtlebot3のシミュレーション
+http://emanual.robotis.com/docs/en/platform/turtlebot3/simulation/
+
+roslaunch turtlebot3_gazebo user_map.launch
+roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch
+
+rosrun image_view image_view image:=/camera/rgb/image_raw
+or
+roslaunch turtlebot3_gazebo turtlebot3_gazebo_rviz.launch
+
+現実と逆...
+turtlebot3_burger.gazebo.xacro
+
+
+床を不透明化
+<visual name='visual'>
+<transparency>1</transparency>
+
+sceneの記述を追加
+<grid>false</grid>
+<origin_visual>false</origin_visual>
+http://sdformat.org/spec?ver=1.6&elem=scene
+
+yawの指定方法
+-R $(arg roll) -P $(arg pitch) -Y $(arg yaw)
