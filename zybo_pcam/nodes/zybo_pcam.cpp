@@ -51,7 +51,7 @@ static int xioctl(int fd, int request, void *arg){
 	return r;
 }
 
-int main() {
+int main(int argc, char **argv) {
 
 	ros::init(argc, argv, "zyboPcam");
 	ros::NodeHandle n;
@@ -171,8 +171,6 @@ int main() {
 	std_msgs::UInt8MultiArray camdata;
 	camdata.data = std::vector<uint8_t>(WIDTH*HEIGHT*2);
 
-	cv::Mat bayerRaw(HEIGHT, WIDTH, CV_8UC1);
-	cv::Mat color(HEIGHT, 1, CV_8UC3);
 	struct 	v4l2_buffer buf;
 	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	buf.memory = V4L2_MEMORY_MMAP;
