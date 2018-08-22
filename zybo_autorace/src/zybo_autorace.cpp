@@ -145,7 +145,6 @@ public:
     
     // cv::inRange(hsv_image, cv::Scalar(Hue_l,Saturation_l,Lightness_l, 0) , cv::Scalar(Hue_h,Saturation_h,Lightness_h, 0), color_mask);
     // cv::bitwise_and(cv_ptr->image, cv_ptr->image, cv_image2, color_mask);
-    cv_image2 = whiteDetect(dstimg);
     // エッジを検出するためにCannyアルゴリズムを適用
     //cv::Canny(cv_ptr3->image, cv_ptr3->image, 15.0, 30.0, 3);
 
@@ -219,7 +218,7 @@ public:
 
     // 画像サイズを縦横半分に変更
     cv::Mat cv_half_image, cv_half_image2, cv_half_image3, cv_half_image4;
-    cv::resize(cv_ptr->image, cv_half_image,cv::Size(),0.25,0.25);
+    cv::resize(dstimg, cv_half_image,cv::Size(),0.25,0.25);
     cv::resize(cv_image2, cv_half_image2,cv::Size(),4,4);
     cv::resize(cv_image3, cv_half_image3,cv::Size(),4,4);
     cv::resize(left_roi, cv_half_image4,cv::Size(),4,4);
@@ -240,11 +239,12 @@ public:
     if (line_lost_cnt > 10) {
       curveStart();
       line_lost_cnt = 0;
-    }
+      }
     
     //エッジ画像をパブリッシュ。OpenCVからROS形式にtoImageMsg()で変換。
     //image_pub_.publish(cv_ptr3->toImageMsg());
     }
+  }
 
   // imageを渡して俯瞰画像を得る
   cv::Mat birdsEye(cv::Mat image)
@@ -275,6 +275,27 @@ public:
     map_matrix = cv::getPerspectiveTransform (src_pnt, dst_pnt);
     cv::warpPerspective (image, dst_image, map_matrix, cv::Size(result_size, result_size));
     return dst_image;
+  }
+
+  // 二点をSTRAIGHT構造体で返す
+  STRAIGHT toStraightStruct(cv::Vec4i line)
+  {
+    STRAIGHT result;
+
+    //中点
+    result.middle = cv::Point ((line[0] + line[2]) / 2, (line[1] + line[3]) / 2);
+    // 距離
+    result.length = (line[0] - line[2]) *  (line[0] - line[2]) + (line[1] - line[3]) *  (line[1] - line[3]);
+    // 角度
+    float radian = atan2(line[1] - line[3], line[0] - line[2]);
+    // radianからdegree
+
+    if ( radian * 180.0 / PI >= 90 ) {
+      result.degree = radian * 180.0 / PI - 90 ;
+    } else {
+      result.degree = radian * 180.0 / PI + 90;
+    }
+    return result;
   }
 
 // 二点間の傾きを求め、長さをかけて重さとする
