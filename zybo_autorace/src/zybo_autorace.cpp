@@ -217,18 +217,22 @@ public:
 
 
     // 画像サイズを縦横半分に変更
+  /*
     cv::Mat cv_half_image, cv_half_image2, cv_half_image3, cv_half_image4;
     cv::resize(dstimg, cv_half_image,cv::Size(),0.25,0.25);
     cv::resize(cv_image2, cv_half_image2,cv::Size(),4,4);
     cv::resize(cv_image3, cv_half_image3,cv::Size(),4,4);
     cv::resize(left_roi, cv_half_image4,cv::Size(),4,4);
+    */
 
     // ウインドウ表示
+    /*
     cv::imshow("Original Image", cv_half_image);
     cv::imshow("Result Image", cv_half_image3);
     cv::imshow("ROI", cv_half_image2);
     cv::imshow("LEFT ROI", cv_half_image4);
     cv::waitKey(3);
+    */
 
     if( average_cnt == 0) {
     // ラインが見つからなかったらカーブを疑う
