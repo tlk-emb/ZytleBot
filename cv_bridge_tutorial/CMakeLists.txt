@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   image_transport
+  geometry_msgs
 )
 
 find_package(OpenCV REQUIRED)
