@@ -269,9 +269,8 @@ public:
     cv::matchTemplate(image, curve_image, result, 5);
     cv::minMaxLoc(result, &minVal, &maxVal);
     std::cout << minVal << "   " << maxVal << std::endl;
-*/
   }
-
+*/
   // imageを渡して俯瞰画像を得る
   cv::Mat birdsEye(cv::Mat image)
   {
