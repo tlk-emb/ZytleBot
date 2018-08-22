@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(zybo_opencv)
+project(zybo_autorace)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   image_transport
+  geometry_msgs
 )
 
 find_package(OpenCV REQUIRED)
@@ -168,5 +169,5 @@ include_directories(
 # catkin_add_nosetests(test)
 
 
-add_executable(zybo_opencv src/zybo_opencv.cpp)
-target_link_libraries(zybo_opencv ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_executable(zybo_autorace src/zybo_autorace.cpp)
+target_link_libraries(zybo_autorace ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
