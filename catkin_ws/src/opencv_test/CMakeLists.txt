@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(cv_bridge_tutorial)
+project(opencv_test)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -169,5 +169,5 @@ include_directories(
 # catkin_add_nosetests(test)
 
 
-add_executable(cv_bridge_tutorial src/cv_bridge_tutorial.cpp)
-target_link_libraries(cv_bridge_tutorial ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_executable(opencv_test src/opencv_test.cpp)
+target_link_libraries(opencv_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})

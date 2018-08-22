@@ -33,7 +33,7 @@ class ImageConverter
 
   ros::Publisher twist_pub;
   ros::Timer timer;
-  cv::Mat curve_image;
+  // cv::Mat curve_image;
   int line_lost_cnt;
 
 public:
@@ -49,13 +49,14 @@ public:
     Lightness_h = 255;
     line_lost_cnt = 0;
 
-curve_image = cv::imread("src/cv_bridge_tutorial/src/curve2.png");
+    //curve_image = cv::imread("src/cv_bridge_tutorial/src/curve2.png");
 
     // カラー画像をサブスクライブ
     image_sub_ = it_.subscribe("/camera/rgb/image_raw", 1, 
       &ImageConverter::imageCb, this);
     //  処理した挙動をパブリッシュ  
-    twist_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
+    //twist_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
+    twist_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel2", 1000);
     // 0.1秒ごとに制御を呼び出す
     //timer = nh.createTimer(ros::Duration(0.1), &ImageConverter::timerCallback, this);
 
@@ -237,6 +238,7 @@ curve_image = cv::imread("src/cv_bridge_tutorial/src/curve2.png");
     }
 
   // curve.pngと類似度を得る
+    /*
   void curveMatch(cv::Mat image) {
 
     int imageCount = 1; // 入力画像の枚数
@@ -259,6 +261,7 @@ curve_image = cv::imread("src/cv_bridge_tutorial/src/curve2.png");
       std::cout << "curve detect!" << std::endl;
       curveStart();
     }
+    */
 
 /*
     cv::Mat result;
