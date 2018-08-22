@@ -31,7 +31,7 @@ public:
     Hue_h = 180;
     Saturation_l = 0;
     Saturation_h = 45;
-    Lightness_l = 180;
+    Lightness_l = 230;
     Lightness_h = 255;
     // カラー画像をサブスクライブ
     image_sub_ = nh_.subscribe("/image_array", 1, 
@@ -125,7 +125,7 @@ public:
     // 上部
     float height_h = 0.59;
     // 下部
-    float height_l = 0.8;
+    float height_l = 0.78;
     // 画素値
     int result_size = 100;
     cv::Mat map_matrix, dst_image;
