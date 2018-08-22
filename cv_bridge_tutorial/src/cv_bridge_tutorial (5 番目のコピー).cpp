@@ -5,7 +5,6 @@
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include "unistd.h"
 
 #include <geometry_msgs/Twist.h>
 
@@ -33,9 +32,7 @@ class ImageConverter
 
   ros::Publisher twist_pub;
   ros::Timer timer;
-  cv::Mat curve_image;
-  int line_lost_cnt;
-
+  
 public:
   // コンストラクタ
   ImageConverter()
@@ -47,9 +44,6 @@ public:
     Saturation_h = 45;
     Lightness_l = 180;
     Lightness_h = 255;
-    line_lost_cnt = 0;
-
-curve_image = cv::imread("src/cv_bridge_tutorial/src/curve2.png");
 
     // カラー画像をサブスクライブ
     image_sub_ = it_.subscribe("/camera/rgb/image_raw", 1, 
@@ -99,18 +93,6 @@ curve_image = cv::imread("src/cv_bridge_tutorial/src/curve2.png");
     std::cout << twist.angular.z << std::endl;
     
     twist_pub.publish(twist);
-
-  }
-
-  void curveStart() {
-    twist.linear.x = 0.2;
-    twist.angular.z = -0.2;
-
-    twist_pub.publish(twist);
-
-    sleep(8);
-    std::cout << "end curve!!!" << std::endl;
-
   }
 
   // コールバック関数
@@ -164,7 +146,6 @@ curve_image = cv::imread("src/cv_bridge_tutorial/src/curve2.png");
     std::vector<cv::Vec4i> lines;
     cv::HoughLinesP( dst, lines, 1, CV_PI/180, 20, 40, 25);
 
-
     // 角度平均をとる
     int average_cnt = 0;
     float degree_average_sum = 0;
@@ -202,8 +183,9 @@ curve_image = cv::imread("src/cv_bridge_tutorial/src/curve2.png");
       } else {
         controler (1, 0);
       }
-
-      line_lost_cnt = 0;
+  } else {
+    // ラインが見つからなかったらカーブ
+    controler(0, -1);
   }
 
     // 画像サイズを縦横半分に変更
@@ -219,55 +201,10 @@ curve_image = cv::imread("src/cv_bridge_tutorial/src/curve2.png");
     cv::imshow("ROI", cv_half_image2);
     cv::imshow("LEFT ROI", cv_half_image4);
     cv::waitKey(3);
-
-    if( average_cnt == 0) {
-    // ラインが見つからなかったらカーブを疑う
-    controler(-1, 0);
-    line_lost_cnt++;
-    std::cout << "line lost" << line_lost_cnt << std::endl;
-
-    if (line_lost_cnt > 10) {
-      curveStart();
-      line_lost_cnt = 0;
-    }
-  }
     
     //エッジ画像をパブリッシュ。OpenCVからROS形式にtoImageMsg()で変換。
     image_pub_.publish(cv_ptr3->toImageMsg());
     }
-
-  // curve.pngと類似度を得る
-  void curveMatch(cv::Mat image) {
-
-    int imageCount = 1; // 入力画像の枚数
-    int channelsToUse[] = { 0 }; // 0番目のチャネルを使う
-    int dimention = 1; // ヒストグラムの次元数
-    int binCount = 256; // ヒストグラムのビンの数
-    int binCounts[] = { binCount };
-    float range[] = { 0, 256 }; // データの範囲は0～255
-    const float* histRange[] = { range };
-    cv::Mat histogram1;
-    cv::calcHist(&image, imageCount, channelsToUse, cv::Mat(), histogram1, dimention, binCounts, histRange);
-    cv::Mat histogram2;
-    cv::calcHist(&curve_image, imageCount, channelsToUse, cv::Mat(), histogram2, dimention, binCounts, histRange);
-
-    // 類似度を調べる（同じ画像を読み込んだため1が出力される）
-    double correlation = compareHist(histogram1, histogram2, CV_COMP_CORREL);
-    std::cout << correlation << std::endl;
-
-    if (correlation > 0.9999) {
-      std::cout << "curve detect!" << std::endl;
-      curveStart();
-    }
-
-/*
-    cv::Mat result;
-    double minVal, maxVal;
-    cv::matchTemplate(image, curve_image, result, 5);
-    cv::minMaxLoc(result, &minVal, &maxVal);
-    std::cout << minVal << "   " << maxVal << std::endl;
-*/
-  }
 
   // imageを渡して俯瞰画像を得る
   cv::Mat birdsEye(cv::Mat image)
