@@ -9,13 +9,10 @@
 #include <math.h>
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
+// #include <chrono>
+
+
 #include <geometry_msgs/Twist.h>
-
-// pcam使用時
-#include "std_msgs/MultiArrayLayout.h"
-#include "std_msgs/MultiArrayDimension.h"
-#include "std_msgs/UInt8MultiArray.h"
-
 
 #define PI 3.141592653589793
 #define BIRDSEYE_LENGTH 100
@@ -40,13 +37,8 @@
 #define HUE_H 180
 #define SATURATION_L 0
 #define SATURATION_H 45
-#define LIGHTNESS_L 220
+#define LIGHTNESS_L 180
 #define LIGHTNESS_H 255
-
-// zybo_camera用設定
-#define CAMERA_WIDTH 640
-#define CAMERA_HEIGHT 480
-
 
 // 直線を中点、傾き、長さで表す
 typedef struct straight {
@@ -55,9 +47,6 @@ typedef struct straight {
   float length;
 } STRAIGHT;
 
-// map_data[y][x][0]がタイルの種類
-// map_data[y][x][1]が向きを表している
-// 向きは1がデータ画像のとおりで、0~3で右回りに表現されている
 int map_data[7][5][2] = {{{3, 0}, {4, 0}, {7, 2}, {4, 0}, {3, 1}},
               {{6, 1}, {0, 0}, {1, 1}, {0, 0}, {6, 1}},
               {{4, 1}, {0, 0}, {5, 1}, {0, 0}, {4, 1}},
@@ -76,17 +65,108 @@ now_phaseについて
 5なら信号検知状態
 */
 
+/*
+ 2
+1 3
+ 0
+
+nox_x = start_x;
+now_y = start_y;
+now_dir = start_dir;
+
+
+intersection_array[] = {3, 2, 1, 0, 0};
+
+// map_data[y][x][0]がタイルの種類
+// map_data[y][x][1]が向きを表している
+// 向きは1がデータ画像のとおりで、0~3で右回りに表現されている
+// x, yの原点は左上
+int map_data[7][5][2] = {{{3, 0}, {4, 0}, {7, 2}, {4, 0}, {3, 1}},
+{{6, 1}, {0, 0}, {1, 1}, {0, 0}, {6, 1}},
+{{4, 1}, {0, 0}, {5, 1}, {0, 0}, {4, 1}},
+{{7, 1}, {2, 0}, {8, 0}, {2, 2}, {7, 3}},
+{{4, 1}, {0, 0}, {5, 3}, {0, 0}, {4, 1}},
+{{6, 1}, {0, 0}, {1, 3}, {0, 0}, {6, 1}},
+{{3, 3}, {4, 0}, {7, 0}, {4, 0}, {3, 2}}};
+
+
+// タイルは直進中(now_phase = "straight")のときみ検索する
+// タイルを見つけた時の処理は、dir（進行方角）の変更、次タイルの決定、now_phaseの変更である
+void searchTile() {
+  // nextTileを検索
+  // カーブを右に曲がるならfind_curveを探索
+  if (map_data[next_tile_y][next_tile_x][0] == 3 && std::abs(map_data[next_tile_y][next_tile_x][1] - now_dir) == 2) {
+    if (line_lost_cnt > 15 || curve_detect_cnt > 5) {
+      now_dir = (now_dir + 1) % 4;
+      setNextTile();
+      changePhase("turn_right");
+    }
+  }
+}
+
+// タイルが見つかったときに呼び出される
+//　今next_tileとなっているものを現在位置とし、今の方向と現在位置から次のタイル目標を決定する
+// road4は特徴のない直線のため無視する
+void setNextTile() {
+  int next_x = next_tile_x;
+  int next_y = next_tile_y;
+  
+  bool find_tile = false;
+  
+  //　road4をスキップするために繰り返す
+  while (find_tile) {
+    
+    // 0が南で右回り, 原点は左上
+    switch (now_dir)
+    {
+      case 0:
+        next_x = next_x;
+        next_y = next_y + 1;
+        break;
+      case 1:
+        next_x = next_x - 1;
+        next_y = next_y;
+        break;
+      case 2:
+        next_x = next_x;
+        next_y = next_y - 1;
+        break;
+      default:
+        next_x = next_x + 1;
+        next_y = next_y;
+        break;
+    }
+    
+    // road4(ただの直線)でないかチェック
+    if (map_data[next_y][next_x][0] != 4) {
+      find_tile = true;
+    }
+  }
+
+  // next_tileの更新
+  next_tile_x = next_x;
+  next_tile_y = next_y;
+}
+
+
+
+
+
+nextTileCheck();
+
+
+
+
+
+
+*/
 
 class ImageConverter
 {
   ros::NodeHandle nh_;
-  /* if zybo
-  ros::Subscriber image_sub_;
-  */
-  // if_pc
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
-  
+  image_transport::Publisher image_pub_;
   int Hue_l, Hue_h, Saturation_l, Saturation_h, Lightness_l, Lightness_h;
   geometry_msgs::Twist twist;
 
@@ -112,9 +192,8 @@ class ImageConverter
 
 public:
   // コンストラクタ
-  ImageConverter() 
-  // if pc
-  : it_(nh_)
+  ImageConverter()
+    : it_(nh_)
   {
     Hue_l = HUE_L;
     Hue_h = HUE_H;
@@ -134,15 +213,11 @@ public:
 
     now_phase = "straight";
 
+    //curve_image = cv::imread("src/cv_bridge_tutorial/src/curve2.png");
 
     // カラー画像をサブスクライブ
-    /* if_zybo
-      image_sub_ = nh_.subscribe("/image_array", 1, 
-      &ImageConverter::imageCb, this);
-    */
     image_sub_ = it_.subscribe("/camera/rgb/image_raw", 1, 
       &ImageConverter::imageCb, this);
-
     //  処理した挙動をパブリッシュ  
     //twist_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
     twist_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
@@ -171,41 +246,27 @@ public:
 
   
 
-
   // コールバック関数
-  // if zybo
-  // void imageCb(const std_msgs::UInt8MultiArray& msg)
   void imageCb(const sensor_msgs::ImageConstPtr& msg)
   {
-    /* if_zybo
-    cv::Mat base_image(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC2);
-    cv::Mat dstimg(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC2);
-    memcpy(base_image.data, &msg.data[0], CAMERA_WIDTH * CAMERA_HEIGHT * 2);
-    cv::cvtColor(base_image, dstimg, cv::COLOR_YUV2RGB_YUYV);
-    */
-
-
-    // if_pc
-    cv_bridge::CvImagePtr cv_ptr;
+    cv_bridge::CvImagePtr cv_ptr, cv_ptr2, cv_ptr3;
     try
     {
       // ROSからOpenCVの形式にtoCvCopy()で変換。cv_ptr->imageがcv::Matフォーマット。
       cv_ptr    = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+      cv_ptr3   = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
     }
     catch (cv_bridge::Exception& e)
     {
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    cv::Mat base_image = cv_ptr->image;
-    ////////
-    
 
     cv::Mat hsv_image, color_mask, gray_image, birds_eye, road_white_binary;
 
     // 俯瞰画像
 
-    birds_eye = birdsEye(base_image);
+    birds_eye = birdsEye(cv_ptr->image);
     road_white_binary = whiteBinary(birds_eye);
 
     cv::Mat polarSrc, polarResult;
@@ -331,7 +392,7 @@ public:
     // 以下デバッグ用
     // 画像サイズを縦横半分に変更
     cv::Mat cv_half_image, birds_eye_x4, white_binary_x4, left_roi_x4, right_roi_x4, polarResult_x4;
-    cv::resize(base_image, cv_half_image,cv::Size(),0.5,0.5);
+    cv::resize(cv_ptr->image, cv_half_image,cv::Size(),0.25,0.25);
     cv::resize(birds_eye, birds_eye_x4,cv::Size(),4,4);
     cv::resize(road_white_binary, white_binary_x4,cv::Size(),4,4);
     cv::resize(left_roi, left_roi_x4,cv::Size(),4,4);
