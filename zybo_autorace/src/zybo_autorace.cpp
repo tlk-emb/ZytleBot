@@ -199,10 +199,10 @@ public:
   // void imageCb(const sensor_msgs::ImageConstPtr& msg)
   {
     // if_zybo
-    cv::Mat base_image(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC2);
+    cv::Mat rawimg(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC2);
     cv::Mat dstimg(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC2);
-    memcpy(base_image.data, &msg.data[0], CAMERA_WIDTH * CAMERA_HEIGHT * 2);
-    cv::cvtColor(base_image, dstimg, cv::COLOR_YUV2RGB_YUYV);
+    memcpy(rawimg.data, &msg.data[0], CAMERA_WIDTH * CAMERA_HEIGHT * 2);
+    cv::cvtColor(rawimg, dstimg, cv::COLOR_YUV2RGB_YUYV);
     
 
 
@@ -218,7 +218,7 @@ public:
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    cv::Mat base_image = cv_ptr->image;
+    cv::Mat rawimg = cv_ptr->image;
     ////////
     */
 
@@ -226,7 +226,7 @@ public:
 
     // 俯瞰画像
 
-    birds_eye = birdsEye(base_image);
+    birds_eye = birdsEye(dstimg);
     road_white_binary = whiteBinary(birds_eye);
 
     cv::Mat polarSrc, polarResult;
@@ -408,7 +408,7 @@ public:
 
 
     cv::Mat cv_half_image, birds_eye_x4, white_binary_x4, left_roi_x4, right_roi_x4, polarResult_x4;
-    cv::resize(base_image, cv_half_image,cv::Size(),0.5,0.5);
+    cv::resize(rawimg, cv_half_image,cv::Size(),0.5,0.5);
     cv::resize(birds_eye, birds_eye_x4,cv::Size(),4,4);
     cv::resize(road_white_binary, white_binary_x4,cv::Size(),4,4);
     cv::resize(left_roi, left_roi_x4,cv::Size(),4,4);
