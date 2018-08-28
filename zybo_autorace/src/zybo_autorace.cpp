@@ -368,6 +368,7 @@ public:
 
     // 以下デバッグ用
     // 画像サイズを縦横半分に変更
+    /*
 
 
     ////////////
@@ -428,6 +429,7 @@ public:
 
     //エッジ画像をパブリッシュ。OpenCVからROS形式にtoImageMsg()で変換。
     //image_pub_.publish(cv_ptr3->toImageMsg());
+    */
   }
 
   // phaseの変更ともろもろの値の初期化
