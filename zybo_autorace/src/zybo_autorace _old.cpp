@@ -24,12 +24,8 @@
 
 // カーブの調整
 #define RIGHT_CURVE_MURGIN_TIME 1
-#define RIGHT_CURVE_END_TIME 6
+#define RIGHT_CURVE_END_TIME 7
 #define RIGHT_CURVE_ROT -0.4
-
-// 走行ラインの左からの割合
-// カーブがギリギリの場合大きく
-#define RUN_LINE 0.18
 
 // 最初の交差点もしくはカーブ位置 dirは以下のように0が南で右回り
 // map_dataは下で書き換える必要がある
@@ -44,24 +40,12 @@
 #define HUE_H 180
 #define SATURATION_L 0
 #define SATURATION_H 45
-#define LIGHTNESS_L 225
+#define LIGHTNESS_L 220
 #define LIGHTNESS_H 255
 
 // zybo_camera用設定
 #define CAMERA_WIDTH 640
 #define CAMERA_HEIGHT 480
-
-/*
-#define WIDTH_RATIO 0.17
-#define HEIGHT_H 0.592
-#define HEIGHT_L 0.79
-*/
-
-#define RIGHT_CURVE_MARGIN_T 1.5
-
-#define WIDTH_RATIO 0.19
-#define HEIGHT_H 0.59
-#define HEIGHT_L 0.8
 
 
 // 直線を中点、傾き、長さで表す
@@ -98,12 +82,10 @@ class ImageConverter
   ros::NodeHandle nh_;
   // if zybo
   ros::Subscriber image_sub_;
-  
+
   /* if_pc
-  image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
   */
-  
   int Hue_l, Hue_h, Saturation_l, Saturation_h, Lightness_l, Lightness_h;
   geometry_msgs::Twist twist;
 
@@ -125,15 +107,11 @@ class ImageConverter
   int detected_line_x;
 
   ros::Time  phase_start_t;
-  ros::Time line_lost_time;
 
 
 public:
   // コンストラクタ
-  ImageConverter() 
-  /* if pc
-  : it_(nh_)
-  */
+  ImageConverter()
   {
     Hue_l = HUE_L;
     Hue_h = HUE_H;
@@ -150,7 +128,6 @@ public:
 
     // start時間を初期化
     phase_start_t = ros::Time::now();
-    line_lost_time = ros::Time::now();
 
     now_phase = "straight";
 
@@ -194,7 +171,7 @@ public:
 
 
   // コールバック関数
-  // if zybo
+  // zybo
   void imageCb(const std_msgs::UInt8MultiArray& msg)
   // void imageCb(const sensor_msgs::ImageConstPtr& msg)
   {
@@ -203,7 +180,6 @@ public:
     cv::Mat dstimg(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC2);
     memcpy(base_image.data, &msg.data[0], CAMERA_WIDTH * CAMERA_HEIGHT * 2);
     cv::cvtColor(base_image, dstimg, cv::COLOR_YUV2RGB_YUYV);
-    
 
 
     /* if_pc
@@ -262,7 +238,7 @@ public:
     }
     if (find_curve) curve_detect_cnt++;
 
-    // 右画像に対して,Tや十が存在するかサーチする
+    // 右画像に対して
     for( int i = 0; i < right_lines.size(); i++ )
     {
       STRAIGHT right_line = toStraightStruct(right_lines[i]);
@@ -289,16 +265,12 @@ public:
 
 
     // 左車線について
-    // 角度平均をとり、全体の角度が垂直になるようにする
-    // 最も左車線を検出し、いい感じになるよう調整する
-    // 車線が見つからない場合、find_left_lineがfalseになる
+    // 角度平均をとる
     int average_cnt = 0;
     float degree_average_sum = 0;
     float most_left_middle_x = BIRDSEYE_LENGTH * 0.5;
     float robot_vel = 0;
     float robot_rot = 0;
-    bool find_left_line = false;
-
     // 垂直に近い点のみ線を引く
     for( size_t i = 0; i < left_lines.size(); i++ )
     {
@@ -313,100 +285,48 @@ public:
           most_left_middle_x = left_line.middle.x;
           detected_line_x = left_line.middle.x;
         }
-        find_left_line = true;
         average_cnt++;
       }
     }
 
     // 左車線を検出できた場合
-    if( find_left_line ) {
-      line_lost_time = ros::Time::now();
+    if( average_cnt != 0) {
         float degree_average = degree_average_sum / average_cnt;
+        // 角度平均が-5以上なら左に曲がる、5以上なら右に曲がる
+        if (degree_average < -10 || degree_average > 10) {
+          robot_rot = degree_average * -0.2;
 
         // 中点が右過ぎたら左に、左過ぎたら右に曲がる
-        if (detected_line_x > BIRDSEYE_LENGTH * 0.25) {
+        } else if (most_left_middle_x > BIRDSEYE_LENGTH * 0.25) {
           robot_vel = 1;
           robot_rot = -1;
-        } else if (detected_line_x < BIRDSEYE_LENGTH * 0.05) {
+        } else if (most_left_middle_x < BIRDSEYE_LENGTH * 0.05) {
           robot_vel = 1;
           robot_rot = 1;
-        } else if (degree_average < -10 || degree_average > 10) {
-         // 角度平均が-5以上なら左に曲がる、5以上なら右に曲がる
-          robot_rot = degree_average * -0.2;
         } else {
           robot_vel = 1;
         }
-        line_lost_cnt = 0;
+        if (line_lost_cnt > 0) line_lost_cnt = 0;
     } else {
-      // 車線が見つからなかった場合、左下検出で進路決定
       line_lost_cnt += 1;
-      updateLeftLine(road_white_binary);
-      robot_vel = 0;
-      robot_rot = (BIRDSEYE_LENGTH * RUN_LINE - detected_line_x) / 40;
     }
 
     // ---------------controler----------------
     if (now_phase == "straight") 
     {
-      ros::Time now = ros::Time::now();
-      if (now - line_lost_time > ros::Duration(2.0)) {
-        changePhase("search_line");
-      } else {
-        searchTile();
-        lineTrace(robot_vel, robot_rot);  
-      }
-    }
+      // searchTile();
+      // lineTrace(robot_vel, robot_rot);
+      rightCurve2(road_white_binary);
+    } 
     else if (now_phase == "turn_right")
     {
-      rightCurveTrace(road_white_binary, find_left_line);
-    } else if (now_phase == "search_line")
-    {
-      searchLine(find_left_line);
+      rightCurve2(road_white_binary);
     }
 
         // ---------------controler end----------------
 
     // 以下デバッグ用
     // 画像サイズを縦横半分に変更
-
-
-    ////////////
-    // 白を見つけたらbaseを更新して、10ピクセル以内にまた白があればそれを仮の白線とする。
-    int temp_detected_line = detected_line_x;
-    int point_i = detected_line_x;
-    int point_j = detected_line_x;
-    
-    
-    // 複数あった場合、直前のライントレースの結果との差を利用する
-    int temp_dif = BIRDSEYE_LENGTH / 2;
-    // uchar *road_hough_bottom = road_hough.ptr<uchar>(BIRDSEYE_LENGTH - 1);
-    for (int i = 0 ; i < detected_line_x + BIRDSEYE_LENGTH / 10; i++) 
-    {
-      int p = road_hough.at<uchar>(BIRDSEYE_LENGTH - 1, i);
-      if (p)
-      {
-        for (int j = i + 1; j < i + BIRDSEYE_LENGTH / 10; j++) 
-        {
-          int q = road_hough.at<uchar>(BIRDSEYE_LENGTH - 1, j);
-          if (q) 
-          {
-            int this_dif = (i + j) / 2 - detected_line_x;
-            if (this_dif < temp_dif)
-            {
-              point_i = i;
-              point_j = j;
-              temp_dif = this_dif;
-              temp_detected_line = (i + j) / 2;
-            } 
-          }
-        }
-      }
-    }
-
-    cv::line( road_white_binary, cv::Point(point_i, BIRDSEYE_LENGTH - 1),
-                cv::Point(point_j, BIRDSEYE_LENGTH - 1), cv::Scalar(255,0,0), 3, 8 );
-
-
     cv::Mat cv_half_image, birds_eye_x4, white_binary_x4, left_roi_x4, right_roi_x4, polarResult_x4;
     cv::resize(base_image, cv_half_image,cv::Size(),0.5,0.5);
     cv::resize(birds_eye, birds_eye_x4,cv::Size(),4,4);
@@ -432,7 +352,7 @@ public:
 
   // phaseの変更ともろもろの値の初期化
   void changePhase(std::string next_phase){
-    std::cout << "change phase!" << next_phase << std::endl;
+    //std::cout << "change phase!" << next_phase << std::endl;
 
   // 前のphaseの結果によって変更される値を処理する
     now_phase = next_phase;
@@ -450,9 +370,7 @@ public:
   // nextTileを検索
   // カーブを右に曲がるならfind_curveを探索
   if (map_data[next_tile_y][next_tile_x][0] == 3 && std::abs(map_data[next_tile_y][next_tile_x][1] - now_dir) == 2) {
-    // if (line_lost_cnt > 10 && curve_detect_cnt > 1) {
-    ros::Time now = ros::Time::now();
-    if (now - line_lost_time > ros::Duration(RIGHT_CURVE_MARGIN_T)) {
+    if (line_lost_cnt > 10 && curve_detect_cnt > 3) {
       now_dir = (now_dir + 1) % 4;
       setNextTile();
       changePhase("turn_right");
@@ -462,7 +380,7 @@ public:
 
 
   // タイルが見つかったときに呼び出される
-  // 今next_tileとなっているものを現在位置とし、今の方向と現在位置から次のタイル目標を決定する
+  //　今next_tileとなっているものを現在位置とし、今の方向と現在位置から次のタイル目標を決定する
   // road4は特徴のない直線のため無視する
   void setNextTile() {
     int next_x = next_tile_x;
@@ -474,7 +392,7 @@ public:
     
     bool find_tile = false;
     
-    // road4をスキップするために繰り返す
+    //　road4をスキップするために繰り返す
     while (!find_tile) {
       
       // 0が南で右回り, 原点は左上
@@ -511,8 +429,7 @@ public:
   }
 
   // 右折
-  /*
-  void rightCurveTrace() {
+  void rightCurve() {
     ros::Time now = ros::Time::now();
     // RIGHT_CURVE_TIMEが終わったら直線フェーズに戻る
     if (now - phase_start_t < ros::Duration(RIGHT_CURVE_MURGIN_TIME)) {
@@ -529,43 +446,10 @@ public:
       twist_pub.publish(twist);
     }
   }
-  */
 
-  // カーブを曲がるときにラインを追跡して挙動決定
-  // 交差点で曲がる時はまた別
-  void rightCurveTrace(cv::Mat road_binary , bool find_left_line ) {
+  void rightCurve2(cv::Mat road_binary) {
 
-    int before_line_x = detected_line_x;
-
-    // detected_line_xをラインの左下から更新する
-    updateLeftLine(road_binary);
-
-    // ロボットの速度決定
-    twist.linear.x = 0.2;
-    twist.angular.z = (BIRDSEYE_LENGTH * RUN_LINE - detected_line_x) / 40;
-    twist_pub.publish(twist);
-
-    // 終了処理
-    ros::Time now = ros::Time::now();
-    if (now - phase_start_t > ros::Duration(RIGHT_CURVE_END_TIME) && find_left_line) {
-      if (find_left_line) {
-        changePhase("straight");
-      } else if (line_lost_cnt > 10) {
-        changePhase("search_line");
-      }
-    }
-  }
-
-  // 決め打ちで曲がる
-  /*
-  void rightTurn() {
-    twist.linear.x = 0.2;
-    twist.angular.z = 
-  }
-  */
-
-  // 白に二値化された画像から一番左下のラインを読み取ってdetected_line_xを更新する
-  void updateLeftLine(cv::Mat road_binary) {
+    // エッジ画像の一番下を見て、白線を検出する。
     cv::Mat road_hough;
     cv::Canny(road_binary, road_hough, 50, 200, 3);
 
@@ -596,11 +480,33 @@ public:
         }
       }
     }
+
+    // detected_line更新
     detected_line_x = temp_detected_line;
+    std::cout << "detected_line = " << detected_line_x << std::endl;
+
+    // ロボットの速度決定
+    twist.linear.x = 0.2;
+    if (detected_line_x > BIRDSEYE_LENGTH * 0.25) {
+      twist.angular.z = RIGHT_CURVE_ROT;
+    } else if (detected_line_x < BIRDSEYE_LENGTH * 0.05) {
+      twist.angular.z = 0.1;
+    } else {
+      twist.angular.z = 0;
+    }
+    twist_pub.publish(twist);
+
+    // 終了処理
+    /*
+    ros::Time now = ros::Time::now();
+    if (now - phase_start_t > ros::Duration(RIGHT_CURVE_END_TIME)) {
+      changePhase("straight");
+    }
+    */
   }
 
 
-  // 確率ハフ変換によってラインを得る
+  //　確率ハフ変換によってラインを得る
   std::vector<cv::Vec4i> getHoughLinesP(cv::Mat image, int threshold, double minLineLength, double maxLineGap)
   {
     // 左側をハフ変換
@@ -613,7 +519,7 @@ public:
   }
 
   // ライン検出の結果によって左右に操作
-  // ラインがあればtrue
+  //　ラインがあればtrue
   // intは+1で左, 0で直進, -1で右
   // ラインが見つからなければ左に回転
   void lineTrace(int vel, int dir){
@@ -628,29 +534,6 @@ public:
     twist_pub.publish(twist);
 
   }
-
-  void searchLine(bool find_left_line){
-    std::cout << "Line Lost" << std::endl;
-
-    twist_pub.publish(twist);
-    if (find_left_line) {
-      changePhase("straight");
-    }
-
-
-    // 三秒ごとに首を振る向きを変える 
-    ros::Time now = ros::Time::now();
-    if (now - phase_start_t < ros::Duration(2.0)) {
-      twist.linear.x = 0.03;
-      twist.angular.z = 0.3;
-    } else if (now - phase_start_t < ros::Duration(6.0)) {
-      twist.angular.z = -0.3;      
-    } else {
-      twist.linear.x += 0.01;
-    }
-
-    twist_pub.publish(twist);
-  } 
 
   // 極座標変換
   cv::Mat polarCoordinateConversion(cv::Mat image)
@@ -701,11 +584,11 @@ public:
     int width = image.size().width;
     int height = image.size().height;
     // 奥行の広さ（小さいほど狭い）
-    float width_ratio = WIDTH_RATIO;
+    float width_ratio = 0.17;
     // 上部
-    float height_h = HEIGHT_H;
+    float height_h = 0.592;
     // 下部
-    float height_l = HEIGHT_L;
+    float height_l = 0.79;
     // 画素値
     int result_size = BIRDSEYE_LENGTH;
     cv::Mat map_matrix, dst_image;
@@ -793,7 +676,7 @@ float lineWeight(cv::Vec4i line)
     // nonzeroをカウント
     int fraction_num = cv::countNonZero(color_mask);
     
-    // 光度の影響を調整
+    //　光度の影響を調整
     if (fraction_num > 35000) {
       if (Lightness_l < 255) Lightness_l += 5;
     } else if (fraction_num < 5000) {
