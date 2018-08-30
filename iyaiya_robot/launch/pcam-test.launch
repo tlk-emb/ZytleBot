@@ -1,4 +1,0 @@
-<launch>
-  <node name="pcam" pkg="ubuntu_pcam" type="ubuntu_pcam_node" output="screen" >
-  </node>
-</launch>
