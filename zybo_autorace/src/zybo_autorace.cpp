@@ -126,6 +126,10 @@ class ImageConverter
 
   ros::Time  phase_start_t;
   ros::Time line_lost_time;
+  
+  bool left_turn;
+  ros::Time left_time;
+  ros::Time right_time;
 
 
 public:
@@ -145,6 +149,10 @@ public:
     next_tile_x = NEXT_X;
     next_tile_y = NEXT_Y;
     now_dir = START_DIR;
+
+    eft_turn = true;
+    left_time = ros::Time::now();
+    right_time = ros::Time::now();
 
     detected_line_x = 0;
 
