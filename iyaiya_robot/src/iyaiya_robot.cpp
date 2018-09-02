@@ -126,10 +126,6 @@ class ImageConverter
 
   ros::Time  phase_start_t;
   ros::Time line_lost_time;
-  
-  bool left_turn;
-  ros::Time left_time;
-  ros::Time right_time;
 
 
 public:
@@ -149,10 +145,6 @@ public:
     next_tile_x = NEXT_X;
     next_tile_y = NEXT_Y;
     now_dir = START_DIR;
-
-    eft_turn = true;
-    left_time = ros::Time::now();
-    right_time = ros::Time::now();
 
     detected_line_x = 0;
 
@@ -211,6 +203,33 @@ public:
     cv::Mat dstimg(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC2);
     memcpy(rawimg.data, &msg.data[0], CAMERA_WIDTH * CAMERA_HEIGHT * 2);
     cv::cvtColor(rawimg, dstimg, cv::COLOR_YUV2RGB_YUYV);
+
+    cv::Mat color_mask, black_image, hsv_image;
+    cv::cvtColor(image, hsv_image, CV_BGR2HSV);
+    cv::inRange(hsv_image, cv::Scalar(0,0,0, 0) , cv::Scalar(179,128,100, 0), color_mask);
+    cv::bitwise_and(image, image, result_image, color_mask);
+
+    nzCount = cv::CountNonZero(result_image);
+
+    std::cout << nzCount << std::endl;
+  
+    cv::imshow("rawimg", dstimg);
+    cv::imshow("black_range", result_image);
+    cv::waitKey(3);
+  
+  if (left_turn) {
+      twist.angular.z = 0.2;
+      twist_pub.publish(twist);
+    
+    left_time = ros::Time::now();
+    if (left_time - right_time > ros::Duration(2.0))left_turn = false;
+  } else {
+    twist.angular.z = -0.2;
+    twist_pub.publish(twist);
+
+    right_time = ros::Time::now();
+    if (right_time - left_time > ros::Duration(2.0))left_turn = true;
+  }
     
 
 
@@ -230,10 +249,11 @@ public:
     ////////
     */
 
-    cv::Mat hsv_image, color_mask, gray_image, birds_eye, road_white_binary;
+    //cv::Mat hsv_image, color_mask, gray_image, birds_eye, road_white_binary;
 
     // 俯瞰画像
 
+    /*
     birds_eye = birdsEye(dstimg);
     road_white_binary = whiteBinary(birds_eye);
 
@@ -432,12 +452,13 @@ public:
     //cv::imshow("RIGHT ROI",  right_roi_x4);
     cv::imshow("road hough",  road_hough);
     cv::imshow("polarCoordinateConversion", polarResult_x4);
+    */
 
     cv::waitKey(3);
 
     //エッジ画像をパブリッシュ。OpenCVからROS形式にtoImageMsg()で変換。
     //image_pub_.publish(cv_ptr3->toImageMsg());
-    */
+    
   }
 
   // phaseの変更ともろもろの値の初期化
@@ -852,7 +873,7 @@ float lineWeight(cv::Vec4i line)
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "image_converter");
+  ros::init(argc, argv, "iyaiya_robot");
   ImageConverter ic;
   ros::spin();
   return 0;
