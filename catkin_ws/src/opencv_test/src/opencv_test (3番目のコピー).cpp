@@ -86,7 +86,6 @@ public:
     int  beforeY;
     int  findCnt;
     ros::Time timeStamp;
-    bool reachBottom;
 } OBJECT;
 
 
@@ -193,7 +192,7 @@ public:
 
     //  処理した挙動をパブリッシュ  
     //twist_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
-    twist_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel2", 1000);
+    twist_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
     // 0.1秒ごとに制御を呼び出す
     //timer = nh.createTimer(ros::Duration(0.1), &ImageConverter::timerCallback, this);
 
@@ -256,14 +255,8 @@ public:
     birds_eye = birdsEye(base_image);
     road_white_binary = whiteBinary(birds_eye);
 
-    cv::Mat aroundImg, aroundWhiteBinary;
-    aroundImg = birdsEyeAround(base_image);
-    aroundWhiteBinary = whiteBinary(aroundImg);
-
-    std::vector<cv::Vec4i> around_lines = getHoughLinesP(aroundWhiteBinary, 0, 10, 5);
-
-
-    
+    cv::Mat centerLineImg;
+    centerLineImg = birdsEyeCenterLine(base_image);
 
     cv::Mat polarSrc, polarResult;
     polarSrc = road_white_binary.clone();
@@ -324,7 +317,7 @@ public:
       }
     }
      */
-    intersectionDetection(around_lines, aroundWhiteBinary);
+    intersectionDetection(right_lines);
 
 
     // 左車線について
@@ -467,15 +460,14 @@ public:
                 cv::Point(point_j, BIRDSEYE_LENGTH - 1), cv::Scalar(255,0,0), 3, 8 );
 
 
-    cv::Mat cv_half_image, birds_eye_x4, white_binary_x4, left_roi_x4, right_roi_x4, polarResult_x4, aroundImg_x4,aroundWhiteBinary_x4;
+    cv::Mat cv_half_image, birds_eye_x4, white_binary_x4, left_roi_x4, right_roi_x4, polarResult_x4, centerLineImg_x4;
     cv::resize(base_image, cv_half_image,cv::Size(),0.25,0.25);
     cv::resize(birds_eye, birds_eye_x4,cv::Size(),4,4);
     cv::resize(road_white_binary, white_binary_x4,cv::Size(),4,4);
     cv::resize(left_roi, left_roi_x4,cv::Size(),4,4);
     cv::resize(right_roi, right_roi_x4,cv::Size(),4,4);
     cv::resize(polarResult, polarResult_x4,cv::Size(),4,4);
-      cv::resize(aroundImg, aroundImg_x4,cv::Size(),2,2);
-      cv::resize(aroundWhiteBinary, aroundWhiteBinary_x4,cv::Size(),2,2);
+      cv::resize(centerLineImg, centerLineImg_x4,cv::Size(),4,4);
 
     // ウインドウ表示
     cv::imshow("Original Image", cv_half_image);
@@ -484,8 +476,7 @@ public:
     //cv::imshow("LEFT ROI", left_roi_x4);
     //cv::imshow("RIGHT ROI",  right_roi_x4);
     cv::imshow("road hough",  road_hough);
-      cv::imshow("center line",  aroundImg_x4);
-      cv::imshow("aroundWhite",  aroundWhiteBinary_x4);
+      cv::imshow("center line",  centerLineImg_x4);
     // cv::imshow("polarCoordinateConversion", polarResult_x4);
 
     cv::waitKey(3);
@@ -814,7 +805,7 @@ public:
 
     // imageを渡して中央線の画像を得る
     //　精度が甘くても、一番下から表示できるように設定
-    cv::Mat birdsEyeAround(cv::Mat image)
+    cv::Mat birdsEyeCenterLine(cv::Mat image)
     {
         int width = image.size().width;
         int height = image.size().height;
@@ -834,13 +825,13 @@ public:
         src_pnt[2] = cv::Point (width * (0.5 + width_ratio), height * height_h);
         src_pnt[3] = cv::Point (width * (1 + (1 - height_l) * (0.5 - width_ratio) / (height_l - height_h)), height);
 
-        dst_pnt[0] = cv::Point (result_size, 0);
-        dst_pnt[1] = cv::Point (result_size, result_size);
-        dst_pnt[2] = cv::Point (result_size * 2, 0);
-        dst_pnt[3] = cv::Point (result_size * 2, result_size);
+        dst_pnt[0] = cv::Point (0, 0);
+        dst_pnt[1] = cv::Point (0, result_size);
+        dst_pnt[2] = cv::Point (result_size, 0);
+        dst_pnt[3] = cv::Point (result_size, result_size);
 
         map_matrix = cv::getPerspectiveTransform (src_pnt, dst_pnt);
-        cv::warpPerspective (image, dstImageCenter, map_matrix, cv::Size(result_size * 3, result_size), cv::INTER_LINEAR, cv::BORDER_CONSTANT,  cv::Scalar::all (100));
+        cv::warpPerspective (image, dstImageCenter, map_matrix, cv::Size(result_size * 2, result_size), cv::INTER_LINEAR, cv::BORDER_CONSTANT,  cv::Scalar::all (100));
         return dstImageCenter;
     }
 
@@ -926,41 +917,33 @@ float lineWeight(cv::Vec4i line)
 
 
   // 画像から交差点を検知し、オブジェクトリストに追加、更新する。
-  void intersectionDetection(std::vector<cv::Vec4i> lines, cv::Mat whiteImg)
+  bool intersectionDetection(std::vector<cv::Vec4i> right_lines)
   {
     // 右画像に対して,Tや十が存在するかサーチする
-    for( int i = 0; i < lines.size(); i++ )
+    for( int i = 0; i < right_lines.size(); i++ )
     {
-      STRAIGHT right_line = toStraightStruct(lines[i]);
+      STRAIGHT right_line = toStraightStruct(right_lines[i]);
       // 水平に近い
       if (right_line.degree > 80 || right_line.degree < -80) {
-        for( int j = 0; j < lines.size(); j++ ) {
+        for( int j = 0; j < right_lines.size(); j++ ) {
           if (j == i) continue;
-          STRAIGHT check_line = toStraightStruct(lines[j]);
+          STRAIGHT check_line = toStraightStruct(right_lines[j]);
 
           // 比較する対象を垂直に絞る
           if (check_line.degree < 20 && check_line.degree > -20) {
-              int dir = (crossCheck(lines[i], lines[j]));
+              int dir = (crossCheck(right_lines[i], right_lines[j]));
               // pointがpoint二点の間にあるかどうか調べる関数
               if (dir == 1) { // 右に伸びている場合
                   std::cout << "right!" << std::endl;
-                  addObject("right_T", lines[i][0], lines[i][1]);
-                  cv::line( whiteImg, cv::Point(lines[i][0], lines[i][1]),
-                            cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0,255,0), 3, 8 );
-                  cv::line( whiteImg, cv::Point(lines[j][0], lines[j][1]),
-                            cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0,255,0), 3, 8 );
+                  addObject("right_T", right_lines[i][0], right_lines[i][1]);
               } else if (dir == -1) {
-                  addObject("left_T", lines[i][2], lines[i][3]);
+                  addObject("left_T", right_lines[i][2], right_lines[i][3]);
                   std::cout << "left!" << std::endl;
-                  cv::line( whiteImg, cv::Point(lines[i][0], lines[i][1]),
-                            cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0,0,255), 3, 8 );
-                  cv::line( whiteImg, cv::Point(lines[j][0], lines[j][1]),
-                            cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0,0,255), 3, 8 );
               }
           }
               /*
-              cv::line( right_roi, cv::Point(lines[i][0], lines[i][1]),
-                        cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0,255,0), 3, 8 );
+              cv::line( right_roi, cv::Point(right_lines[i][0], right_lines[i][1]),
+                        cv::Point(right_lines[i][2], right_lines[i][3]), cv::Scalar(0,255,0), 3, 8 );
               cv::line( right_roi, cv::Point(right_lines[j][0], right_lines[j][1]),
                         cv::Point(right_lines[j][2], right_lines[j][3]), cv::Scalar(0,255,0), 3, 8 );
               */
@@ -968,41 +951,6 @@ float lineWeight(cv::Vec4i line)
         }
       }
     }
-
-    /*
-    // 道路から赤色の物体を検知し、オブジェクトリストに追加、更新する。
-    void redObjectDetectionOnRoad(cv::Mat image)
-    {
-      // 画像から赤色抽出
-      // y軸ごとに
-        // 右画像に対して,Tや十が存在するかサーチする
-        for( int i = 0; i < right_lines.size(); i++ )
-        {
-            STRAIGHT right_line = toStraightStruct(right_lines[i]);
-            // 水平に近い
-            if (right_line.degree > 80 || right_line.degree < -80) {
-                for( int j = 0; j < right_lines.size(); j++ ) {
-                    if (j == i) continue;
-                    STRAIGHT check_line = toStraightStruct(right_lines[j]);
-
-                    // 比較する対象を垂直に絞る
-                    if (check_line.degree < 20 && check_line.degree > -20) {
-                        int dir = (crossCheck(right_lines[i], right_lines[j]));
-                        // pointがpoint二点の間にあるかどうか調べる関数
-                        if (dir == 1) { // 右に伸びている場合
-                            std::cout << "right!" << std::endl;
-                            addObject("right_T", right_lines[i][0], right_lines[i][1]);
-                        } else if (dir == -1) {
-                            addObject("left_T", right_lines[i][2], right_lines[i][3]);
-                            std::cout << "left!" << std::endl;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    */
-
 
   // オブジェクトを発見した時、それが以前発見されたものと一致するかどうかを調べ、一致しなかったら追加
   // 一致する場合タイムスタンプと位置を更新し、カウントを1増やす
@@ -1038,7 +986,7 @@ float lineWeight(cv::Vec4i line)
           itr++;
       }
     if (!findObj) {
-        OBJECT obj = {objType, objectX, objectY, 1, ros::Time::now(), false};
+        OBJECT obj = {objType, objectX, objectY, 1, ros::Time::now()};
         objects.push_back(obj);
     }
   }

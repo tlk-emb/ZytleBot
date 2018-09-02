@@ -171,3 +171,4 @@ include_directories(
 
 add_executable(opencv_test src/opencv_test.cpp)
 target_link_libraries(opencv_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_definitions(-std=c++11)
