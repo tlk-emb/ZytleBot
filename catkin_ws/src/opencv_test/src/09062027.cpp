@@ -152,6 +152,7 @@ class ImageConverter {
     // カーブの次が横断歩道の場合、カーブ終了後横断歩道を認識するまで少しストップ
     bool curveAfterCrosswalk;
 
+    bool findLeftLaneLeftT;
 
     // 加速するかしないか
     bool acceleration;
@@ -245,6 +246,7 @@ public:
         reachBottomRightLaneLeftT = false;
         reachBottomLeftLaneLeftT = false;
         reachBottomLeftLaneStraightEnd = false;
+        findLeftLaneLeftT = false;
         mostUnderLeftLaneLeftT = 0;
         nowIntersectionCount = 0;
         intersectionCurveStartFlagRightLaneRightT = false;
@@ -338,16 +340,11 @@ public:
 
 
         // 交差点等のTを発見
-        bool nowFindRightLaneRightT = intersectionDetection(around_lines, aroundWhiteBinary);
+        bool nowFingRightLaneRightT = intersectionDetection(around_lines, aroundWhiteBinary);
 
 
         // 左レーンの発見フラグをリセット
         find_left_line = false;
-
-        std::cout << "reachBottomLeftLaneLeftT = " << reachBottomLeftLaneLeftT << std::endl;
-        std::cout << "reachBottomRightLaneRightT = " << reachBottomRightLaneRightT << std::endl;
-        std::cout << "reachBottomLeftLaneLeftT = " << reachBottomLeftLaneStraightEnd << std::endl;
-        std::cout << "intersectionCurveStartFlagRightLaneRightT = " << intersectionCurveStartFlagRightLaneRightT << std::endl;
 
 
         // ---------------controller----------------
@@ -357,7 +354,7 @@ public:
 
         if (now_phase == "straight") {
             ros::Time now = ros::Time::now();
-            if (now - line_lost_time > ros::Duration(4.0)) {
+            if (now - line_lost_time > ros::Duration(6.0)) {
                 changePhase("search_line");
             } else {
                 double degree_average = detectLane(left_roi);
@@ -373,7 +370,7 @@ public:
             double degree_average = detectLane(left_roi);
             searchLine();
         } else if (now_phase == "search_right_lane_right_T") {
-            searchRightLaneRightT(nowFindRightLaneRightT);
+            searchRightLaneRightT(nowFingRightLaneRightT);
         } else if (now_phase == "turn_left") {
             leftTurn();
         } else if (now_phase == "turn_right") {
@@ -400,6 +397,8 @@ public:
         // 画像サイズを縦横半分に変更
 
         // updateLeftLine(road_white_binary);
+
+        std::cout << "twist x " << twist.linear.x << " z " << twist.angular.z << std::endl;
 
         ////////////
 
@@ -457,6 +456,7 @@ public:
         objects.clear();
         curve_detect_cnt = 0;
         reachBottomLeftLaneLeftT = false;
+        findLeftLaneLeftT = false;
         reachBottomRightLaneLeftT = false;
         reachBottomRightLaneRightT = false;
         intersectionCurveStartFlagRightLaneRightT = false;
@@ -1188,11 +1188,9 @@ public:
                     if (std::abs(std::abs(check_line.degree - right_line.degree) - 90) < 10) {
                         int dir = (crossCheck(lines[i], lines[j]));
                         // pointがpoint二点の間にあるかどうか調べる関数
-                        if (dir == 1 & lines[i][1] > 20 && lines[i][0] > BIRDSEYE_LENGTH * 1.5 && lines[i][0] < BIRDSEYE_LENGTH * 2.2) { // 右に伸びていて、かつある程度下にある場合
+                        if (dir == 1 & lines[i][1] > 30 && lines[i][2] > BIRDSEYE_LENGTH * 1.5 && lines[i][2] < BIRDSEYE_LENGTH * 2.2) { // 右に伸びていて、かつある程度下にある場合
                             addObject("right_lane_right_T", lines[i][0], lines[i][1]);
-                            std::cout << "right_lane_right_T find!"<< std::endl;
                             nowFindRightLaneRightT = true;
-                            line_lost_time = ros::Time::now();
 
                             // デバッグ
                             cv::line(display, cv::Point(lines[i][0], lines[i][1]),
@@ -1200,24 +1198,16 @@ public:
                             cv::line(display, cv::Point(lines[j][0], lines[j][1]),
                                      cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0, 255, 0), 3, 8);
                         } else if (dir == -1 && lines[i][3] > 30) {
-                            if (lines[i][2] > BIRDSEYE_LENGTH * 0.6 && lines[i][2] < BIRDSEYE_LENGTH * 1.4) {
+                            if (lines[i][2] > BIRDSEYE_LENGTH * 0.5 && lines[i][2] < BIRDSEYE_LENGTH * 1.5) {
                                 addObject("left_lane_left_T", lines[i][2], lines[i][3]);
-                                line_lost_time = ros::Time::now();
-
-                                cv::line(display, cv::Point(lines[i][0], lines[i][1]),
-                                         cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0, 0, 255), 3, 8);
-                                cv::line(display, cv::Point(lines[j][0], lines[j][1]),
-                                         cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0, 0, 255), 3, 8);
-                            } else if (lines[i][2] > BIRDSEYE_LENGTH * 1.6 && lines[i][2] < BIRDSEYE_LENGTH * 2.2) {
+                            } else if (lines[i][2] > BIRDSEYE_LENGTH * 1.5 && lines[i][2] < BIRDSEYE_LENGTH * 2.5) {
                                 addObject("right_lane_left_T", lines[i][2], lines[i][3]);
-                                line_lost_time = ros::Time::now();
-
-
-                                cv::line(display, cv::Point(lines[i][0], lines[i][1]),
-                                         cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0, 120, 120), 3, 8);
-                                cv::line(display, cv::Point(lines[j][0], lines[j][1]),
-                                         cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0, 120, 120), 3, 8);
                             }
+
+                            cv::line(display, cv::Point(lines[i][0], lines[i][1]),
+                                     cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0, 0, 255), 3, 8);
+                            cv::line(display, cv::Point(lines[j][0], lines[j][1]),
+                                     cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0, 0, 255), 3, 8);
 
                         }
                     }
@@ -1250,13 +1240,13 @@ public:
         for (itr = objects.begin(); itr != objects.end();) {
             OBJECT compare = *itr;
             if (compare.objType == objType && objectY < compare.beforeY) {
+                std::cout << "update object" << std::endl;
                 compare.beforeX = objectX;
                 compare.beforeY = objectY;
                 compare.findCnt += 1;
                 compare.timeStamp = ros::Time::now();
                 *itr = compare;
                 findObj = true;
-                std::cout << "update object cnt = " << compare.findCnt << std::endl;
                 break;
             }
             itr++;
@@ -1267,6 +1257,27 @@ public:
         }
     }
 
+    // 最も最近更新されたオブジェクトのx座標を返す
+    /*
+    OBJECT newestObjectX(std::string objType) {
+        int objectX =
+        for (itr = objects.begin(); itr != objects.end();) {
+            OBJECT compare = *itr;
+            if (compare.objType == objType && objectY < compare.beforeY) {
+                std::cout << "update object" << std::endl;
+                compare.beforeX = objectX;
+                compare.beforeY = objectY;
+                compare.findCnt += 1;
+                compare.timeStamp = ros::Time::now();
+                *itr = compare;
+                findObj = true;
+                break;
+            }
+            itr++;
+        }
+
+    }
+     */
 
     // オブジェクトを発見した時、それが以前発見されたものと一致するかどうかを調べ、一致しなかったら追加
     // 一致する場合タイムスタンプと位置を更新し、カウントを1増やす
@@ -1328,6 +1339,7 @@ public:
         std::list<OBJECT>::iterator itr;
         int objCnt;
         int mostUnderLeftLaneLeftT_y = 0;
+        bool nowFindLeftLaneLeftT = false;
         mostUnderLeftLaneLeftT = detected_line_x;
 
 
@@ -1348,15 +1360,6 @@ public:
             // オブジェクトが下に到達する時刻を推定し、下に到達したと推定された場合アクションのためのフラグを立てる
             // タイルを進める、左に曲がる等をsearchTile()で行う
             double  reachBottomTime = ((1 - ((double)obj.beforeY) / BIRDSEYE_LENGTH) * 4  + INTERSECTION_PREDICTION_UNDER_MARGIN) * INTERSECTION_PREDICTION_TIME_RATIO * (0.2 / (twist.linear.x + 0.001));
-
-            if (obj.objType == "left_lane_left_T") {
-                std::cout << "左レーンTの残り時間= " << now - obj.timeStamp - ros::Duration(reachBottomTime) << std::endl;
-                if (mostUnderLeftLaneLeftT_y > obj.beforeY) {
-                    mostUnderLeftLaneLeftT_y = obj.beforeY;
-                    mostUnderLeftLaneLeftT = obj.beforeX - BIRDSEYE_LENGTH; // BIRDSEYE_LENGTH分だけ右にずれているため
-                }
-            }
-
             if (now - obj.timeStamp > ros::Duration(reachBottomTime)) {
                 if (obj.findCnt > 1) {
                     if (obj.objType == "left_lane_left_T") {
@@ -1367,15 +1370,28 @@ public:
                     } else if (obj.objType == "right_lane_right_T") {
                         reachBottomRightLaneRightT = true;
                     } else if (obj.objType == "left_lane_end") {
-                        std::cout << "left lane end = true " << std::endl;
                         reachBottomLeftLaneStraightEnd = true;
                     }
                 }
                 itr = objects.erase(itr);
                 continue;
             }
+            if (obj.objType == "left_lane_left_T") {
+                nowFindLeftLaneLeftT = true;
+                if (mostUnderLeftLaneLeftT_y > obj.beforeY) {
+                    mostUnderLeftLaneLeftT_y = obj.beforeY;
+                    mostUnderLeftLaneLeftT = obj.beforeX - BIRDSEYE_LENGTH; // BIRDSEYE_LENGTH分だけ右にずれているため
+                }
+            }
             itr++;
             objCnt++;
+        }
+
+        // メンバ変数を更新
+        if (nowFindLeftLaneLeftT) {
+            findLeftLaneLeftT = true;
+        } else {
+            findLeftLaneLeftT = false;
         }
     }
 };

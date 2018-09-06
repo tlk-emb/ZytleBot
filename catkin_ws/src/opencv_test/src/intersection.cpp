@@ -22,9 +22,9 @@
 // 2
 //1 3
 // 0
-#define NEXT_X 0
-#define NEXT_Y 3
-#define START_DIR 2
+#define NEXT_X 2
+#define NEXT_Y 6
+#define START_DIR 3
 
 #define PI 3.141592653589793
 #define BIRDSEYE_LENGTH 100
@@ -125,7 +125,7 @@ int map_data[7][5][2] = {{{3, 0}, {4, 0}, {7, 2}, {4, 0}, {3, 1}},
                          {{6, 1}, {0, 0}, {1, 3}, {0, 0}, {6, 1}},
                          {{3, 3}, {4, 0}, {7, 0}, {4, 0}, {3, 2}}};
 
-int intersectionDir[] = {3, 2, 1, 3, 2, 1, 3, 2, 1};
+int intersectionDir[] = {2, 1, 2, 0, 2, 1, 3, 2, 1};
 
 /*
 now_phaseについて

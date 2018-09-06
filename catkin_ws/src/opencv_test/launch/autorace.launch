@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="opencv_test" type="opencv_test" name="zybo_autorace" output="screen">
+  	<rosparam command="load" file="$(find opencv_test)/autorace.yaml" />
+  </node>
+</launch>
