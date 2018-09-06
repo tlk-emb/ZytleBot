@@ -156,7 +156,7 @@ class ImageConverter {
     XmlRpc::XmlRpcValue params;
 
     // デバッグ
-    //cv::Mat display;
+    cv::Mat display;
 
 
 public:
@@ -319,14 +319,14 @@ public:
 
         std::vector <cv::Vec4i> around_lines = getHoughLinesP(aroundWhiteBinary, 0, 10, 5);
 
-        // display = aroundWhiteBinary.clone();
+        display = aroundWhiteBinary.clone();
 
         cv::Mat road_white_binary(aroundWhiteBinary, cv::Rect(BIRDSEYE_LENGTH, 0, BIRDSEYE_LENGTH, BIRDSEYE_LENGTH));
         cv::Mat left_roi(aroundWhiteBinary, cv::Rect(BIRDSEYE_LENGTH, 0, BIRDSEYE_LENGTH / 2, BIRDSEYE_LENGTH));
         cv::Mat right_roi(aroundWhiteBinary, cv::Rect(BIRDSEYE_LENGTH * 1.5, 0, BIRDSEYE_LENGTH / 2, BIRDSEYE_LENGTH));
 
 
-        // cv::Mat road_clone = road_white_binary.clone();
+        cv::Mat road_clone = road_white_binary.clone();
 
 
         // 交差点等のTを発見
@@ -374,7 +374,7 @@ public:
         } else if (now_phase == "find_obs") {
             obstacleAvoidance(road_white_binary);
         } else if (now_phase == "intersection_straight") {
-            intersectionStraight(road_white_binary);
+            intersectionStraight(road_clone);
             limitedTwistPub();
         }
 
@@ -395,7 +395,6 @@ public:
         // updateLeftLine(road_white_binary);
 
         ////////////
-        /*
 
         for (OBJECT object : objects) {
             if (object.objType == "right_lane_right_T") {
@@ -411,7 +410,7 @@ public:
         cv::Mat cv_half_image, birds_eye_x4, white_binary_x4, left_roi_x4, right_roi_x4, aroundImg_x4, aroundWhiteBinary_x4, red_image_x4;
         cv::resize(base_image, cv_half_image, cv::Size(), 0.25, 0.25);
         cv::resize(road_white_binary, white_binary_x4, cv::Size(), 4, 4);
-        // cv::resize(display, aroundWhiteBinary_x4, cv::Size(), 2, 2);
+        cv::resize(display, aroundWhiteBinary_x4, cv::Size(), 2, 2);
 
         // cv::resize(birds_eye, birds_eye_x4, cv::Size(), 4, 4);
         // cv::resize(left_roi, left_roi_x4, cv::Size(), 4, 4);
@@ -422,7 +421,7 @@ public:
         // ウインドウ表示
         cv::imshow("Original Image", cv_half_image);
         cv::imshow("WHITE BINARY", white_binary_x4);
-        // cv::imshow("aroundWhite", aroundWhiteBinary_x4);
+        cv::imshow("aroundWhite", aroundWhiteBinary_x4);
 
         // cv::imshow("ROI", birds_eye_x4);
         //cv::imshow("LEFT ROI", left_roi_x4);
@@ -435,7 +434,6 @@ public:
 
         //エッジ画像をパブリッシュ。OpenCVからROS形式にtoImageMsg()で変換。
         //image_pub_.publish(cv_ptr3->toImageMsg());
-         */
     }
 
 ////////////////関数//////////////////
@@ -1188,31 +1186,27 @@ void detectObstacle(){
                             line_lost_time = ros::Time::now();
 
                             // デバッグ
-                            /*
                             cv::line(display, cv::Point(lines[i][0], lines[i][1]),
                                      cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0, 255, 0), 3, 8);
                             cv::line(display, cv::Point(lines[j][0], lines[j][1]),
                                      cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0, 255, 0), 3, 8);
-                                     */
                         } else if (dir == -1 && lines[i][3] > 30) {
                             if (lines[i][2] > BIRDSEYE_LENGTH * 0.6 && lines[i][2] < BIRDSEYE_LENGTH * 1.4) {
                                 addObject("left_lane_left_T", lines[i][2], lines[i][3]);
                                 line_lost_time = ros::Time::now();
-                                /*
+
                                 cv::line(display, cv::Point(lines[i][0], lines[i][1]),
                                          cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0, 0, 255), 3, 8);
                                 cv::line(display, cv::Point(lines[j][0], lines[j][1]),
                                          cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0, 0, 255), 3, 8);
-                                         */
                             } else if (lines[i][2] > BIRDSEYE_LENGTH * 1.6 && lines[i][2] < BIRDSEYE_LENGTH * 2.2) {
                                 addObject("right_lane_left_T", lines[i][2], lines[i][3]);
                                 line_lost_time = ros::Time::now();
-                                /*
+
                                 cv::line(display, cv::Point(lines[i][0], lines[i][1]),
                                          cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0, 120, 120), 3, 8);
                                 cv::line(display, cv::Point(lines[j][0], lines[j][1]),
                                          cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0, 120, 120), 3, 8);
-                                         */
                             }
 
                         }

@@ -34,6 +34,8 @@
 #define HEIGHT_L 0.8
 */
 
+cv::Mat camera_mtx;
+cv::Mat camera_dist;
 
 typedef struct object {
 public:
@@ -85,12 +87,7 @@ now_phaseについて
 
 class ImageConverter {
     ros::NodeHandle nh_;
-    /* if zybo
     ros::Subscriber image_sub_;
-    */
-    // if_pc
-    image_transport::ImageTransport it_;
-    image_transport::Subscriber image_sub_;
 
     // 定数宣言
     int BIRDSEYE_LENGTH, CAMERA_WIDTH, CAMERA_HEIGHT;
@@ -161,7 +158,7 @@ class ImageConverter {
     XmlRpc::XmlRpcValue params;
 
     // デバッグ
-    cv::Mat display;
+    //cv::Mat display;
 
 
 public:
@@ -254,18 +251,16 @@ public:
 
 
         // カラー画像をサブスクライブ
-        /* if_zybo
+        // if_zybo
           image_sub_ = nh_.subscribe("/image_array", 1,
           &ImageConverter::imageCb, this);
-        */
+        /*
         image_sub_ = it_.subscribe("/camera/rgb/image_raw", 1,
                                    &ImageConverter::imageCb, this);
+        */
 
         //  処理した挙動をパブリッシュ
-        //twist_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
         twist_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
-        // 0.1秒ごとに制御を呼び出す
-        //timer = nh.createTimer(ros::Duration(0.1), &ImageConverter::timerCallback, this);
 
         //image_pub_ = it_.advertise("/image_topic", 1);
 
@@ -292,16 +287,17 @@ public:
 
     // コールバック関数
     // if zybo
-    // void imageCb(const std_msgs::UInt8MultiArray& msg)
-    void imageCb(const sensor_msgs::ImageConstPtr &msg) {
-        /* if_zybo
+     void imageCb(const std_msgs::UInt8MultiArray& msg)
+    //void imageCb(const sensor_msgs::ImageConstPtr &msg) {
+         // if_zybo
         cv::Mat base_image(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC2);
         cv::Mat dstimg(CAMERA_HEIGHT, CAMERA_WIDTH, CV_8UC2);
         memcpy(base_image.data, &msg.data[0], CAMERA_WIDTH * CAMERA_HEIGHT * 2);
         cv::cvtColor(base_image, dstimg, cv::COLOR_YUV2RGB_YUYV);
-        */
+
 
         // if_pc
+        /*
         cv_bridge::CvImagePtr cv_ptr;
         try {
             // ROSからOpenCVの形式にtoCvCopy()で変換。cv_ptr->imageがcv::Matフォーマット。
@@ -312,7 +308,7 @@ public:
             return;
         }
         cv::Mat base_image = cv_ptr->image;
-        ////////
+        ////////*/
 
 
         cv::Mat hsv_image, color_mask, gray_image, birds_eye;
@@ -327,7 +323,7 @@ public:
 
         std::vector <cv::Vec4i> around_lines = getHoughLinesP(aroundWhiteBinary, 0, 10, 5);
 
-        display = aroundWhiteBinary.clone();
+        //display = aroundWhiteBinary.clone();
 
         cv::Mat road_white_binary(aroundWhiteBinary, cv::Rect(BIRDSEYE_LENGTH, 0, BIRDSEYE_LENGTH, BIRDSEYE_LENGTH));
         cv::Mat left_roi(aroundWhiteBinary, cv::Rect(BIRDSEYE_LENGTH, 0, BIRDSEYE_LENGTH / 2, BIRDSEYE_LENGTH));
@@ -1195,28 +1191,33 @@ public:
                             line_lost_time = ros::Time::now();
 
                             // デバッグ
+                            /*
                             cv::line(display, cv::Point(lines[i][0], lines[i][1]),
                                      cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0, 255, 0), 3, 8);
                             cv::line(display, cv::Point(lines[j][0], lines[j][1]),
                                      cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0, 255, 0), 3, 8);
+                                     */
                         } else if (dir == -1 && lines[i][3] > 30) {
                             if (lines[i][2] > BIRDSEYE_LENGTH * 0.6 && lines[i][2] < BIRDSEYE_LENGTH * 1.4) {
                                 addObject("left_lane_left_T", lines[i][2], lines[i][3]);
                                 line_lost_time = ros::Time::now();
 
+                                /*
                                 cv::line(display, cv::Point(lines[i][0], lines[i][1]),
                                          cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0, 0, 255), 3, 8);
                                 cv::line(display, cv::Point(lines[j][0], lines[j][1]),
                                          cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0, 0, 255), 3, 8);
+                                         */
                             } else if (lines[i][2] > BIRDSEYE_LENGTH * 1.6 && lines[i][2] < BIRDSEYE_LENGTH * 2.2) {
                                 addObject("right_lane_left_T", lines[i][2], lines[i][3]);
                                 line_lost_time = ros::Time::now();
 
-
+                                /*
                                 cv::line(display, cv::Point(lines[i][0], lines[i][1]),
                                          cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0, 120, 120), 3, 8);
                                 cv::line(display, cv::Point(lines[j][0], lines[j][1]),
                                          cv::Point(lines[j][2], lines[j][3]), cv::Scalar(0, 120, 120), 3, 8);
+                                         */
                             }
 
                         }
@@ -1378,12 +1379,20 @@ public:
             objCnt++;
         }
     }
+
+
 };
 
 int main(int argc, char **argv) {
 
+    // キャリブレーションファイル読み込み
+    cv::FileStorage fs("/home/cf/catkin_ws/calibration.yml", cv::FileStorage::READ);
+    fs["mtx"] >> camera_mtx;
+    fs["dist"] >> camera_dist;
+    fs.release();
+
     // 進行方向読み込み
-    std::ifstream ifs("/home/sou/catkin_ws/src/opencv_test/bending_direction.txt");
+    std::ifstream ifs("/home/ubuntu/catkin_ws/src/zybo_autorace/bending_direction.txt");
     std::string str;
     if (ifs.fail()){
         std::cerr << "text file load fail" << std::endl;

@@ -60,20 +60,36 @@
 
 #include <linux/videodev2.h>
 
+#define WIDTH 640
+#define HEIGHT 480
 
+cv::Mat camera_mtx;
+cv::Mat camera_dist;
 void imageViewer(const std_msgs::UInt8MultiArray& msg)
 {
-	cv::Mat rawimg(1080, 1920, CV_8UC2);
-	cv::Mat dstimg(1080, 1920, CV_8UC2);
-	memcpy(rawimg.data, &msg.data[0], 1920 * 1080 * 2);
+	cv::Mat rawimg(HEIGHT, WIDTH , CV_8UC2);
+	cv::Mat dstimg(HEIGHT, WIDTH, CV_8UC2);
+	memcpy(rawimg.data, &msg.data[0], WIDTH * HEIGHT * 2);
 	cv::cvtColor(rawimg, dstimg, cv::COLOR_YUV2RGB_YUYV);
+
+	cv::Mat after_img, dstimg_half;
+//cv::resize(dstimg, dstimg_half, cv::Size(), 0.5, 0.5);
+
+	cv::undistort(dstimg, after_img, camera_mtx, camera_dist);
 	
-	cv::imshow("image_test", dstimg);
+	
+	cv::imshow("before_img", dstimg);
+	cv::imshow("after_img", after_img);
 	cv::waitKey(3);
 }
 
 int main(int argc, char **argv)
 {
+	cv::FileStorage fs("/home/cf/catkin_ws/calibration.yml", cv::FileStorage::READ);
+	
+	fs["mtx"] >> camera_mtx;
+	fs["dist"] >> camera_dist;
+	fs.release();
 	ros::init(argc, argv, "pcamSub");
 	ros::NodeHandle n;
 	ros::Subscriber sub = n.subscribe("image_array", 1, imageViewer);
