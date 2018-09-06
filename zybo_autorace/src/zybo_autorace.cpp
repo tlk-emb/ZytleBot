@@ -291,6 +291,9 @@ public:
         memcpy(base_image.data, &msg.data[0], CAMERA_WIDTH * CAMERA_HEIGHT * 2);
         cv::cvtColor(base_image, dstimg, cv::COLOR_YUV2BGR_YUYV);
 
+        cv::Mat caliblated;
+        cv::undistort(dstimg, caliblated, camera_mtx, camera_dist);
+
 
         // if_pc
         /*
@@ -1384,13 +1387,13 @@ void detectObstacle(){
 int main(int argc, char **argv) {
 
     // キャリブレーションファイル読み込み
-    cv::FileStorage fs("/home/cf/catkin_ws/calibration.yml", cv::FileStorage::READ);
+    cv::FileStorage fs("/home/ubuntu/catkin_ws/src/zybo_autorace/calibration.yml", cv::FileStorage::READ);
     fs["mtx"] >> camera_mtx;
     fs["dist"] >> camera_dist;
     fs.release();
 
     // 進行方向読み込み
-    std::ifstream ifs("/home/ubuntu/catkin_ws/src/zybo_autorace/bending_direction.txt");
+    std::ifstream ifs("/home/ubuntu/catkin_ws/src/zybo_autorace/honsen2.txt");
     std::string str;
     if (ifs.fail()) {
         std::cerr << "text file load fail" << std::endl;

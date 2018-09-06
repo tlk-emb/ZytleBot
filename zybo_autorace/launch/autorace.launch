@@ -1,5 +1,5 @@
 <launch>
   <node pkg="zybo_autorace" type="zybo_autorace" name="zybo_autorace" output="screen">
-  	<rosparam command="load" file="$(find opencv_test)/autorace.yaml" />
+  	<rosparam command="load" file="$(find zybo_autorace)/autorace.yaml" />
   </node>
 </launch>

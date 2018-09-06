@@ -14,7 +14,7 @@ autorace:
   hue_h: 180
   saturation_l: 0
   saturation_h: 45
-  lightness_l: 220
+  lightness_l: 180
   lightness_h: 255
   run_line: 0.15
   run_line_margin: 0.1

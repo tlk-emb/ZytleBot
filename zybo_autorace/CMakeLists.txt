@@ -171,3 +171,4 @@ include_directories(
 
 add_executable(zybo_autorace src/zybo_autorace.cpp)
 target_link_libraries(zybo_autorace ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_definitions(-std=c++11)

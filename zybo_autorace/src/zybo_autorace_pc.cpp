@@ -291,6 +291,9 @@ public:
         memcpy(base_image.data, &msg.data[0], CAMERA_WIDTH * CAMERA_HEIGHT * 2);
         cv::cvtColor(base_image, dstimg, cv::COLOR_YUV2BGR_YUYV);
 
+	      cv::Mat caliblated;
+	      cv::undistort(dstimg, caliblated, camera_mtx, camera_dist);
+
 
         // if_pc
         /*
@@ -311,10 +314,10 @@ public:
 
         // 俯瞰画像
 
-        birds_eye = birdsEye(base_image);
+        birds_eye = birdsEye(caliblated);
 
         cv::Mat aroundImg, aroundWhiteBinary;
-        aroundImg = birdsEyeAround(base_image);
+        aroundImg = birdsEyeAround(caliblated);
         aroundWhiteBinary = whiteBinary(aroundImg);
 
         std::vector <cv::Vec4i> around_lines = getHoughLinesP(aroundWhiteBinary, 0, 10, 5);
@@ -408,7 +411,7 @@ public:
 
 
         cv::Mat cv_half_image, birds_eye_x4, white_binary_x4, left_roi_x4, right_roi_x4, aroundImg_x4, aroundWhiteBinary_x4, red_image_x4;
-        cv::resize(base_image, cv_half_image, cv::Size(), 0.25, 0.25);
+        cv::resize(caliblated, cv_half_image, cv::Size(), 0.25, 0.25);
         cv::resize(road_white_binary, white_binary_x4, cv::Size(), 4, 4);
         cv::resize(display, aroundWhiteBinary_x4, cv::Size(), 2, 2);
 
@@ -1384,7 +1387,7 @@ int main(int argc, char **argv) {
     fs.release();
 
     // 進行方向読み込み
-    std::ifstream ifs("/home/ubuntu/catkin_ws/src/zybo_autorace/bending_direction.txt");
+    std::ifstream ifs("/home/cf/catkin_ws/src/zybo_autorace/honsen2_dir.txt");
     std::string str;
     if (ifs.fail()) {
         std::cerr << "text file load fail" << std::endl;
