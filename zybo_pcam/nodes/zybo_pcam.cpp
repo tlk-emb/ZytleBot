@@ -32,8 +32,8 @@ sudo media-ctl -d /dev/media0 -V '"43c60000.mipi_csi2_rx_subsystem":0 [fmt:UYVY/
 
 
 #define FMT_NUM_PLANES 3
-#define WIDTH 1920
-#define HEIGHT 1080
+#define WIDTH 640
+#define HEIGHT 480
 
 struct buffer_addr_struct{
 	void *start[FMT_NUM_PLANES];

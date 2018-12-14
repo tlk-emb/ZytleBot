@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="zybo_autorace" type="yosen_autorace" name="zybo_autorace" output="screen">
+  	<rosparam command="load" file="$(find zybo_autorace)/yosen.yaml" />
+  </node>
+</launch>
