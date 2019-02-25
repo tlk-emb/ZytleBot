@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package>
+  <name>control_system</name>
+  <version>0.0.0</version>
+  <description>ZytleBot control_system package</description>
+
+  <maintainer email="tamusou6953@gmail.com">So Tamura</maintainer>
+
+  <license>BSD</license>
+
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+    <build_depend>geometry_msgs</build_depend>
+
+  <export>
+  </export>
+</package>
