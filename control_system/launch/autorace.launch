@@ -1,0 +1,6 @@
+<launch>
+  <node pkg="zybo_autorace" type="zybo_autorace" name="zybo_autorace" output="screen">
+  	<rosparam command="load" file="$(find zybo_autorace)/autorace.yaml" />
+	<param name="autorace/project_folder" value="$(find zybo_autorace)" />
+  </node>
+</launch>

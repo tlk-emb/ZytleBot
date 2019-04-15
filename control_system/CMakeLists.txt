@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(autorace)
-
-set(CMAKE_CXX_FLAGS "-std=c++11 -lm -g -fsigned-char -fpermissive -Wint-to-pointer-cast -O3")
+project(control_system)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -14,7 +12,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   image_transport
   geometry_msgs
-  nodelet
 )
 
 find_package(OpenCV REQUIRED)
@@ -103,8 +100,7 @@ catkin_package(
 # include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
-  ${OpenCV_INCLUDE_DIRS}
-  include
+  ${OpenCV_INCLUDE_DIRS} 
 )
 
 ## Declare a cpp library
@@ -172,6 +168,6 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_library(autorace src/autorace.cpp include/signal_lib/xcalc_hog.c include/signal_lib/xcalc_hog_linux.c  include/signal_lib/xcalc_hog_sinit.c include/signal_lib/linuxmisc.cpp include/signal_lib/linuxmmap.cpp include/json_lib/json11.cpp)
-#add_definitions(-std=c++11)
-target_link_libraries(autorace ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+add_executable(control_system src/control_system.cpp)
+target_link_libraries(control_system ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})

@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="red_signal" type="red_signal" name="red_signal" output="screen" launch-prefix="sudo">
+  </node>
+</launch>
