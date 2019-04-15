@@ -1,5 +1,8 @@
 # ZytleBot
 
+Contact tamura@lab3.kuis.kyoto-u.ac.jp
+
+*  3Dmodel  3Dmodel for PCam and Webcam
 *  autorace Nodelet化された本番用プロジェクト
 *  gazebo_simulation Gazeboシミュレーション用の素材等
 *  images テンプレートマッチングに使う画像集
