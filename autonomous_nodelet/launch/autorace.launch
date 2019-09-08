@@ -1,0 +1,11 @@
+<launch>
+  <arg name="multi_robot_name" default=""/>
+  <node pkg="nodelet" type="nodelet" name="autorace_nodelet_manager" args="manager" output="screen"/>
+  <node pkg="nodelet" type="nodelet" name="nodelet_autorace" args="load autorace/nodelet_autorace autorace_nodelet_manager" output="screen">
+  	<rosparam command="load" file="$(find autorace)/autorace.yaml" />
+	<param name="autorace/project_folder" value="$(find autorace)" />
+  </node>
+  <node pkg="nodelet" type="nodelet" name="nodelet_pcam" args="load autorace/nodelet_pcam autorace_nodelet_manager" output="screen"></node>
+  <node pkg="nodelet" type="nodelet" name="nodelet_usbcam" args="load autorace/nodelet_usbcam autorace_nodelet_manager" output="screen"></node>
+  <node pkg="nodelet" type="nodelet" name="nodelet_signal" args="load autorace/nodelet_signal autorace_nodelet_manager" output="screen"></node>
+</launch>
